@@ -103,7 +103,6 @@
     <div id="report_chart" class="page">
         <header><h1 class="title-app">Technical Chart</h1></header>
         <div class="chart-container">
-            <!-- UPGRADE: Pemanggilan fungsi global menggunakan window. agar aman di dalam modul -->
             <i class="material-icons zoom-icon" onclick="window.toggleFullscreen(true)">zoom_in</i>
             <p style="font-size:0.75rem; color:#94a3b8; margin-bottom:15px;">Grafik Transaksi (Candlestick)</p>
             <div id="candleChart"></div>
@@ -120,7 +119,6 @@
     </div>
 
     <div id="fullscreen-overlay">
-        <!-- UPGRADE: Pemanggilan fungsi global menggunakan window. agar aman di dalam modul -->
         <i class="material-icons close-fullscreen" onclick="window.toggleFullscreen(false)">close</i>
         <div id="candleChartFull" style="margin-top: 40px;"></div>
     </div>
@@ -133,23 +131,28 @@
     </nav>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+        // Menggunakan SDK Firebase versi terbaru (12.14.0) sesuai script baru kamu
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
 
+        // Konfigurasi Firebase baru milikmu
         const firebaseConfig = {
-            apiKey: "AIzaSyDb-MDXMepNP4IcM9T7Wl81ms1DmVfe3BM",
-            authDomain: "keuangan-pribadi-e8ba3.firebaseapp.com",
-            projectId: "keuangan-pribadi-e8ba3",
-            storageBucket: "keuangan-pribadi-e8ba3.firebasestorage.app",
-            messagingSenderId: "948879534010",
-            appId: "1:948879534010:web:6d1a526d3ff0bba0575f83"
+            apiKey: "AIzaSyAhXZP6Ssoz31Djrg_5KBxK9h6D7oQcxXA",
+            authDomain: "keuangan-pribadi-cbe93.firebaseapp.com",
+            projectId: "keuangan-pribadi-cbe93",
+            storageBucket: "keuangan-pribadi-cbe93.firebasestorage.app",
+            messagingSenderId: "492144956564",
+            appId: "1:492144956564:web:85aedd1d5039c0e2a21081",
+            measurementId: "G-YG65L0RT4K"
         };
 
+        // Inisialisasi Firebase
         const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
         const db = getFirestore(app);
         const colRef = collection(db, 'transaksi');
 
-        // UPGRADE: Inisialisasi tanggal ditaruh lebih awal agar state siap sebelum onSnapshot
         document.getElementById('calendarPicker').valueAsDate = new Date();
 
         const isAdmin = new URLSearchParams(window.location.search).get('mode') === 'admin';
@@ -163,7 +166,6 @@
             if(!isAdmin) return; 
             const ket = document.getElementById('ketInput').value;
             const jumlah = parseInt(document.getElementById('jumlahInput').value);
-            // UPGRADE: Fallback otomatis ke tanggal hari ini jika input picker kosong
             const tgl = document.getElementById('calendarPicker').value || new Date().toISOString().split('T')[0];
             
             if (!ket || !jumlah) return alert("Isi keterangan & nominal!");
@@ -212,7 +214,6 @@
                 saldo += change;
                 const close = saldo;
                 
-                // UPGRADE: Penyesuaian sumbu lilin atas dan bawah yang lebih dinamis
                 const high = Math.max(open, close);
                 const low = Math.min(open, close);
 
@@ -249,7 +250,6 @@
                 if(periodeAktif === 'year' && tDate.getFullYear() === pDate.getFullYear()) match = true;
                 if(periodeAktif === 'month' && tDate.getMonth() === pDate.getMonth() && tDate.getFullYear() === pDate.getFullYear()) match = true;
                 
-                // UPGRADE: Logika pencegahan kebocoran tanggal masa depan pada filter mingguan (7 hari ke belakang saja)
                 if(periodeAktif === 'week') {
                     const selisihHari = (pDate - tDate) / 86400000;
                     if(selisihHari >= 0 && selisihHari < 7) match = true;
@@ -366,4 +366,5 @@
         });
     </script>
 </body>
-</html>
+    </html>
+                                   
