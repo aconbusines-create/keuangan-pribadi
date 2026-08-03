@@ -1,207 +1,60 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Keuangan Pribadi Pro - Clean Mode</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: #0f172a; color: #f8fafc; padding-bottom: 90px; overflow-x: hidden; }
-        
-        #candleChart, #candleChartFull {
-            touch-action: none; 
-            user-select: none;
-            -webkit-user-drag: none;
-            -webkit-tap-highlight-color: rgba(0,0,0,0);
-        }
-
-        .page { display: none; padding: 20px; animation: fadeIn 0.3s; }
-        .active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        header { margin-bottom: 20px; }
-        .title-app { font-size: 1.2rem; font-weight: bold; color: #fff; }
-
-        .balance-card { background: linear-gradient(135deg, #1e293b, #334155); border: 1px solid #475569; color: white; padding: 25px; border-radius: 20px; margin-bottom: 20px; }
-        .daily-box { background: #1e293b; padding: 15px; border-radius: 15px; border: 1px solid #334155; margin-bottom: 10px; width: 100%; }
-        
-        .input-card { display: none; background: #1e293b; padding: 20px; border-radius: 20px; border: 1px solid #334155; margin-bottom: 25px; }
-        .input-card input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #334155; background: #0f172a; color: white; border-radius: 10px; outline: none; }
-        
-        .btn-group { display: flex; gap: 10px; }
-        .btn-input { flex: 1; padding: 12px; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-input:active { transform: scale(0.95); }
-
-        .report-tabs { display: flex; background: #1e293b; border-radius: 12px; padding: 5px; margin-bottom: 20px; }
-        .tab-item { flex: 1; text-align: center; padding: 10px; border-radius: 10px; cursor: pointer; font-size: 0.85rem; color: #94a3b8; }
-        .tab-item.active-tab { background: #334155; color: #38bdf8; font-weight: bold; }
-
-        .chart-container { background: #1e293b; padding: 15px; border-radius: 20px; border: 1px solid #334155; margin-bottom: 20px; position: relative; }
-        .zoom-icon { position: absolute; top: 15px; right: 15px; color: #38bdf8; cursor: pointer; z-index: 10; background: rgba(15, 23, 42, 0.8); border-radius: 8px; padding: 5px; }
-        
-        #fullscreen-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 9999; padding: 10px; }
-        .close-fullscreen { position: absolute; top: 15px; right: 15px; color: white; font-size: 30px; cursor: pointer; z-index: 10000; background: rgba(0,0,0,0.5); border-radius: 50%; }
-
-        .list-item { background: #1e293b; padding: 12px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
-        .btn-delete { color: #f43f5e; cursor: pointer; font-size: 20px; margin-left: 10px; }
-
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: #1e293b; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #334155; z-index: 100; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; cursor: pointer; flex: 1; }
-        .nav-item.active-nav { color: #38bdf8; }
-        .nav-item span { font-size: 10px; margin-top: 4px; }
-        
-        .text-green { color: #10b981; }
-        .text-red { color: #f43f5e; }
-    </style>
-</head>
-<body>
-
-    <div id="home" class="page active">
-        <header><h1 class="title-app">Keuangan Pribadi</h1></header>
-        <input type="date" id="calendarPicker" style="width:100%; padding:12px; border-radius:10px; border:1px solid #334155; background:#1e293b; color:white; margin-bottom:15px;">
-        
-        <div class="balance-card">
-            <p style="opacity: 0.8;">Net Transaksi Hari Ini</p>
-            <h2 id="total-saldo" style="margin-bottom: 15px; font-size: 1.8rem;">Rp 0</h2>
-            <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; font-size: 0.85rem;">
-                <div><span style="opacity: 0.7;">Pemasukan:</span><div id="home-in" class="text-green" style="font-weight: bold;">Rp 0</div></div>
-                <div style="text-align: right;"><span style="opacity: 0.7;">Pengeluaran:</span><div id="home-out" class="text-red" style="font-weight: bold;">Rp 0</div></div>
-            </div>
-        </div>
-        
-        <div id="adminPanel" class="input-card">
-            <input type="text" id="ketInput" placeholder="Keterangan">
-            <input type="number" id="jumlahInput" placeholder="Nominal (Rp)">
-            <div class="btn-group">
-                <button id="btnMasuk" class="btn-input" style="background:#10b981;">MASUK (+)</button>
-                <button id="btnKeluar" class="btn-input" style="background:#f43f5e;">KELUAR (-)</button>
-            </div>
-            <button id="btnHapusSemua" class="btn-input" style="background:transparent; border:1px solid #f43f5e; color:#f43f5e; margin-top:10px; width:100%; font-size: 0.7rem; letter-spacing: 1px;">HAPUS SEMUA DATA</button>
-        </div>
-
-        <div style="font-weight:bold; margin-bottom:10px; color:#94a3b8; font-size:0.9rem;">Recent History</div>
-        <div id="dailyHistoryList"></div>
-    </div>
-
-    <div id="report_money" class="page">
-        <header><h1 class="title-app">Statistics</h1></header>
-        <div class="report-tabs">
-            <div id="tab-week" class="tab-item active-tab">Weekly</div>
-            <div id="tab-month" class="tab-item">Monthly</div>
-            <div id="tab-year" class="tab-item">Yearly</div>
-        </div>
-        <div class="balance-card">
-            <p id="label-bersih">Net Profit Periode Ini</p>
-            <h2 id="rep-bersih">Rp 0</h2>
-        </div>
-        <div class="daily-box"><p style="font-size:0.8rem; color:#94a3b8;">Total Pemasukan</p><h4 id="rep-in" class="text-green">Rp 0</h4></div>
-        <div class="daily-box"><p style="font-size:0.8rem; color:#94a3b8;">Total Pengeluaran</p><h4 id="rep-out" class="text-red">Rp 0</h4></div>
-    </div>
-
-    <div id="report_chart" class="page">
-        <header><h1 class="title-app">Technical Chart</h1></header>
-        <div class="chart-container">
-            <i class="material-icons zoom-icon" onclick="window.toggleFullscreen(true)">zoom_in</i>
-            <p style="font-size:0.75rem; color:#94a3b8; margin-bottom:15px;">Grafik Transaksi (Candlestick)</p>
-            <div id="candleChart"></div>
-        </div>
-        <div class="chart-container">
-            <p style="font-size:0.75rem; color:#94a3b8; margin-bottom:15px;">Asset Composition</p>
-            <div id="pieChart"></div>
-        </div>
-    </div>
-
-    <div id="history" class="page">
-        <header><h1 class="title-app">Full History</h1></header>
-        <div id="fullHistoryList"></div>
-    </div>
-
-    <div id="fullscreen-overlay">
-        <i class="material-icons close-fullscreen" onclick="window.toggleFullscreen(false)">close</i>
-        <div id="candleChartFull" style="margin-top: 40px;"></div>
-    </div>
-
-    <nav class="bottom-nav">
-        <div class="nav-item active-nav" data-page="home"><i class="material-icons">account_balance_wallet</i><span>Home</span></div>
-        <div class="nav-item" data-page="report_money"><i class="material-icons">bar_chart</i><span>Stats</span></div>
-        <div class="nav-item" data-page="report_chart"><i class="material-icons">query_stats</i><span>Chart</span></div>
-        <div class="nav-item" data-page="history"><i class="material-icons">history</i><span>History</span></div>
-    </nav>
-
-    <script type="module">
-        // Menggunakan SDK Firebase versi terbaru (12.14.0) sesuai script baru kamu
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
-
-        // Konfigurasi Firebase baru milikmu
-        const firebaseConfig = {
-            apiKey: "AIzaSyAhXZP6Ssoz31Djrg_5KBxK9h6D7oQcxXA",
-            authDomain: "keuangan-pribadi-cbe93.firebaseapp.com",
-            projectId: "keuangan-pribadi-cbe93",
-            storageBucket: "keuangan-pribadi-cbe93.firebasestorage.app",
-            messagingSenderId: "492144956564",
-            appId: "1:492144956564:web:85aedd1d5039c0e2a21081",
-            measurementId: "G-YG65L0RT4K"
-        };
-
-        // Inisialisasi Firebase
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-        const db = getFirestore(app);
-        const colRef = collection(db, 'transaksi');
-
+    <script>
+        // Set tanggal hari ini di kalender
         document.getElementById('calendarPicker').valueAsDate = new Date();
 
-        const isAdmin = new URLSearchParams(window.location.search).get('mode') === 'admin';
-        if (isAdmin) document.getElementById('adminPanel').style.display = 'block';
+        // Mengaktifkan panel input untuk semua mode (karena sekarang disimpan di browser sendiri)
+        document.getElementById('adminPanel').style.display = 'block';
 
-        let dataTransaksi = [];
+        // Mengambil data dari localStorage saat pertama kali dimuat
+        let dataTransaksi = JSON.parse(localStorage.getItem('transaksi_lokal')) || [];
         let periodeAktif = 'week';
         let mainCandleChart, fullCandleChart, pieChart;
 
-        async function simpanData(tipe) {
-            if(!isAdmin) return; 
+        // Fungsi Simpan ke LocalStorage
+        function simpanData(tipe) {
             const ket = document.getElementById('ketInput').value;
             const jumlah = parseInt(document.getElementById('jumlahInput').value);
             const tgl = document.getElementById('calendarPicker').value || new Date().toISOString().split('T')[0];
             
             if (!ket || !jumlah) return alert("Isi keterangan & nominal!");
-            try {
-                await addDoc(colRef, { ket, jumlah, tipe, tgl, createdAt: Date.now() });
-                document.getElementById('ketInput').value = "";
-                document.getElementById('jumlahInput').value = "";
-            } catch (e) { alert("Error Database!"); }
+
+            const dataBaru = {
+                id: 'id_' + Date.now(),
+                ket,
+                jumlah,
+                tipe,
+                tgl,
+                createdAt: Date.now()
+            };
+
+            dataTransaksi.push(dataBaru);
+            localStorage.setItem('transaksi_lokal', JSON.stringify(dataTransaksi));
+
+            document.getElementById('ketInput').value = "";
+            document.getElementById('jumlahInput').value = "";
+            
+            updateTampilan();
         }
 
-        window.hapusData = async (id) => {
-            if(isAdmin && confirm("Hapus log ini?")) await deleteDoc(doc(db, 'transaksi', id));
-        };
-
-        document.getElementById('btnHapusSemua').onclick = async () => {
-            if (!isAdmin) return;
-            const confirmDel = confirm("PERINGATAN: Kamu akan menghapus SELURUH data transaksi. Tindakan ini tidak bisa dibatalkan. Lanjutkan?");
-            if (confirmDel) {
-                try {
-                    const snapshot = await getDocs(colRef);
-                    const batch = writeBatch(db);
-                    snapshot.docs.forEach((d) => {
-                        batch.delete(d.ref);
-                    });
-                    await batch.commit();
-                    alert("Database berhasil dikosongkan!");
-                } catch (e) {
-                    alert("Gagal menghapus: " + e.message);
-                }
+        // Fungsi Hapus Satu Data
+        window.hapusData = (id) => {
+            if (confirm("Hapus log ini?")) {
+                dataTransaksi = dataTransaksi.filter(t => t.id !== id);
+                localStorage.setItem('transaksi_lokal', JSON.stringify(dataTransaksi));
+                updateTampilan();
             }
         };
 
-        onSnapshot(query(colRef, orderBy('tgl', 'asc')), (snapshot) => {
-            dataTransaksi = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-            updateTampilan();
-        });
+        // Fungsi Hapus Semua Data
+        document.getElementById('btnHapusSemua').onclick = () => {
+            const confirmDel = confirm("PERINGATAN: Kamu akan menghapus SELURUH data transaksi di browser ini. Lanjutkan?");
+            if (confirmDel) {
+                dataTransaksi = [];
+                localStorage.removeItem('transaksi_lokal');
+                alert("Penyimpanan lokal berhasil dikosongkan!");
+                updateTampilan();
+            }
+        };
 
         function getCandleSeries() {
             let saldo = 0;
@@ -234,12 +87,16 @@
             const fList = document.getElementById('fullHistoryList');
             dList.innerHTML = ""; fList.innerHTML = "";
 
+            // Urutkan berdasarkan tanggal untuk tampilan history
+            const sortedData = [...dataTransaksi].sort((a, b) => b.createdAt - a.createdAt);
+
             dataTransaksi.forEach(t => {
-                const del = isAdmin ? `<i class="material-icons btn-delete" onclick="hapusData('${t.id}')">delete_outline</i>` : "";
+                const del = `<i class="material-icons btn-delete" onclick="hapusData('${t.id}')">delete_outline</i>`;
                 const item = `<div class="list-item"><div><b>${t.ket}</b><br><small style="color:#64748b">${t.tgl}</small></div><div style="display:flex;align-items:center"><span class="${t.tipe==='masuk'?'text-green':'text-red'}" style="font-weight:bold">Rp ${t.jumlah.toLocaleString()}</span>${del}</div></div>`;
                 
                 fList.innerHTML = item + fList.innerHTML;
                 if(t.tipe === 'masuk') totalIn += t.jumlah; else totalOut += t.jumlah;
+                
                 if(t.tgl === pickDate){
                     dList.innerHTML += item;
                     if(t.tipe==='masuk') hIn += t.jumlah; else hOut += t.jumlah;
@@ -291,6 +148,7 @@
                     shared: false,
                     custom: function({ seriesIndex, dataPointIndex, w }) {
                         const d = w.globals.initialSeries[seriesIndex].data[dataPointIndex];
+                        if(!d) return '';
                         const colorClass = d.nominal >= 0 ? 'text-green' : 'text-red';
                         return `<div style="background: #1e293b; border: 1px solid #334155; padding: 10px; border-radius: 8px;">
                             <div style="font-size: 12px; color: #94a3b8;">#${d.x} ${d.ket}</div>
@@ -364,7 +222,8 @@
                 updateTampilan();
             };
         });
-    </script>
-</body>
-    </html>
-                                   
+
+        // Tampilkan data saat pertama kali aplikasi dibuka
+        updateTampilan();
+                           </script>
+                           
