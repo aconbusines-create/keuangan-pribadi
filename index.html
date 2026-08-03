@@ -130,63 +130,76 @@
         <div class="nav-item" data-page="history"><i class="material-icons">history</i><span>History</span></div>
     </nav>
 
-    <script>
-        // Set tanggal hari ini di kalender
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-analytics.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAhXZP6Ssoz31Djrg_5KBxK9h6D7oQcxXA",
+            authDomain: "keuangan-pribadi-cbe93.firebaseapp.com",
+            projectId: "keuangan-pribadi-cbe93",
+            storageBucket: "keuangan-pribadi-cbe93.firebasestorage.app",
+            messagingSenderId: "492144956564",
+            appId: "1:492144956564:web:85aedd1d5039c0e2a21081",
+            measurementId: "G-YG65L0RT4K"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getFirestore(app);
+        const colRef = collection(db, 'transaksi');
+
         document.getElementById('calendarPicker').valueAsDate = new Date();
 
-        // Mengaktifkan panel input agar langsung muncul tanpa ?mode=admin
-        document.getElementById('adminPanel').style.display = 'block';
+        // VALIDASI MODE ADMIN
+        const isAdmin = new URLSearchParams(window.location.search).get('mode') === 'admin';
+        if (isAdmin) document.getElementById('adminPanel').style.display = 'block';
 
-        // Mengambil data dari localStorage saat halaman pertama kali dimuat
-        let dataTransaksi = JSON.parse(localStorage.getItem('transaksi_lokal')) || [];
+        let dataTransaksi = [];
         let periodeAktif = 'week';
         let mainCandleChart, fullCandleChart, pieChart;
 
-        // Fungsi Simpan ke LocalStorage
-        function simpanData(tipe) {
+        async function simpanData(tipe) {
+            if(!isAdmin) return; 
             const ket = document.getElementById('ketInput').value;
             const jumlah = parseInt(document.getElementById('jumlahInput').value);
             const tgl = document.getElementById('calendarPicker').value || new Date().toISOString().split('T')[0];
             
             if (!ket || !jumlah) return alert("Isi keterangan & nominal!");
-
-            const dataBaru = {
-                id: 'id_' + Date.now(),
-                ket,
-                jumlah,
-                tipe,
-                tgl,
-                createdAt: Date.now()
-            };
-
-            dataTransaksi.push(dataBaru);
-            localStorage.setItem('transaksi_lokal', JSON.stringify(dataTransaksi));
-
-            document.getElementById('ketInput').value = "";
-            document.getElementById('jumlahInput').value = "";
-            
-            updateTampilan();
+            try {
+                await addDoc(colRef, { ket, jumlah, tipe, tgl, createdAt: Date.now() });
+                document.getElementById('ketInput').value = "";
+                document.getElementById('jumlahInput').value = "";
+            } catch (e) { alert("Error Database!"); }
         }
 
-        // Fungsi Hapus Satu Data
-        window.hapusData = (id) => {
-            if (confirm("Hapus log ini?")) {
-                dataTransaksi = dataTransaksi.filter(t => t.id !== id);
-                localStorage.setItem('transaksi_lokal', JSON.stringify(dataTransaksi));
-                updateTampilan();
+        window.hapusData = async (id) => {
+            if(isAdmin && confirm("Hapus log ini?")) await deleteDoc(doc(db, 'transaksi', id));
+        };
+
+        document.getElementById('btnHapusSemua').onclick = async () => {
+            if (!isAdmin) return;
+            const confirmDel = confirm("PERINGATAN: Kamu akan menghapus SELURUH data transaksi. Tindakan ini tidak bisa dibatalkan. Lanjutkan?");
+            if (confirmDel) {
+                try {
+                    const snapshot = await getDocs(colRef);
+                    const batch = writeBatch(db);
+                    snapshot.docs.forEach((d) => {
+                        batch.delete(d.ref);
+                    });
+                    await batch.commit();
+                    alert("Database berhasil dikosongkan!");
+                } catch (e) {
+                    alert("Gagal menghapus: " + e.message);
+                }
             }
         };
 
-        // Fungsi Hapus Semua Data
-        document.getElementById('btnHapusSemua').onclick = () => {
-            const confirmDel = confirm("PERINGATAN: Kamu akan menghapus SELURUH data transaksi di browser ini. Tindakan ini tidak bisa dibatalkan. Lanjutkan?");
-            if (confirmDel) {
-                dataTransaksi = [];
-                localStorage.removeItem('transaksi_lokal');
-                alert("Penyimpanan lokal berhasil dikosongkan!");
-                updateTampilan();
-            }
-        };
+        onSnapshot(query(colRef, orderBy('tgl', 'asc')), (snapshot) => {
+            dataTransaksi = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            updateTampilan();
+        });
 
         function getCandleSeries() {
             let saldo = 0;
@@ -220,12 +233,12 @@
             dList.innerHTML = ""; fList.innerHTML = "";
 
             dataTransaksi.forEach(t => {
-                const del = `<i class="material-icons btn-delete" onclick="hapusData('${t.id}')">delete_outline</i>`;
+                // Tombol delete hanya muncul jika masuk sebagai ADMIN
+                const del = isAdmin ? `<i class="material-icons btn-delete" onclick="hapusData('${t.id}')">delete_outline</i>` : "";
                 const item = `<div class="list-item"><div><b>${t.ket}</b><br><small style="color:#64748b">${t.tgl}</small></div><div style="display:flex;align-items:center"><span class="${t.tipe==='masuk'?'text-green':'text-red'}" style="font-weight:bold">Rp ${t.jumlah.toLocaleString()}</span>${del}</div></div>`;
                 
                 fList.innerHTML = item + fList.innerHTML;
                 if(t.tipe === 'masuk') totalIn += t.jumlah; else totalOut += t.jumlah;
-                
                 if(t.tgl === pickDate){
                     dList.innerHTML += item;
                     if(t.tipe==='masuk') hIn += t.jumlah; else hOut += t.jumlah;
@@ -277,7 +290,6 @@
                     shared: false,
                     custom: function({ seriesIndex, dataPointIndex, w }) {
                         const d = w.globals.initialSeries[seriesIndex].data[dataPointIndex];
-                        if(!d) return '';
                         const colorClass = d.nominal >= 0 ? 'text-green' : 'text-red';
                         return `<div style="background: #1e293b; border: 1px solid #334155; padding: 10px; border-radius: 8px;">
                             <div style="font-size: 12px; color: #94a3b8;">#${d.x} ${d.ket}</div>
@@ -351,9 +363,6 @@
                 updateTampilan();
             };
         });
-
-        // Jalankan render awal data
-        updateTampilan();
     </script>
 </body>
 </html>
